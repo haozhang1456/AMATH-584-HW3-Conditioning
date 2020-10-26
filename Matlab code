@@ -1,0 +1,136 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Question 1
+function compare(X)
+% compare(X)
+% Compare three QR decompositions,
+%
+I = eye(size(X));
+
+%% Build in qr ecomposition
+[Q,R] = qr(X);
+qrerr_qr = norm(Q*R-X,inf)/norm(X,inf);
+ortherr_qr = norm(Q'*Q-I,inf);
+
+%% Modified Gram Schmidt
+[Q,R] = mgs(X);
+qrerr_mgs = norm(Q*R-X,inf)/norm(X,inf);
+ortherr_mgs = norm(Q'*Q-I,inf);
+
+%% Householder QR Decomposition
+[Q,R] = qrfactor(X);
+qrerr_h = norm(Q*R-X,inf)/norm(X,inf);
+ortherr_h = norm(Q'*Q-I,inf);
+
+%% Report results 
+fprintf('QR error\n')
+fprintf('Build in:     %10.3e\n',qrerr_qr)
+fprintf('Modified:    %10.3e\n',qrerr_mgs)
+fprintf('Householder: %10.3e\n',qrerr_h)
+fprintf('\n')
+fprintf('Orthogonality error\n')
+fprintf('Build in:     %10.3e\n',ortherr_qr)
+fprintf('Modified:    %10.3e\n',ortherr_mgs)
+fprintf('Householder: %10.3e\n',ortherr_h)
+end
+
+
+function [Q,R] = qrfactor(A)
+
+[m,n] = size(A);
+Q=eye(m);
+for k = 1:n
+    % Find the HH reflector
+    z = A(k:m,k);
+    v = [ -sign(z(1))*norm(z) - z(1); -z(2:end) ];
+    v = v / sqrt(v'*v);   % remoce v'*v in den
+    
+    % Apply the HH reflection to each column of A and Q
+    for j = 1:n
+        A(k:m,j) = A(k:m,j) - v*( 2*(v'*A(k:m,j)) );
+    end
+    for j = 1:m
+        Q(k:m,j) = Q(k:m,j) - v*( 2*(v'*Q(k:m,j)) );
+    end
+        
+end
+
+Q = Q';
+R = triu(A);  % exact triangularity
+end
+%%%%%%Modified Gram-Schmidt Algorithm
+
+function [Q,R] =  mgs(X)
+    % Modified Gram-Schmidt.  [Q,R] = mgs(X);
+    % G. W. Stewart, "Matrix Algorithms, Volume 1", SIAM, 1998.
+    [n,p] = size(X);
+    Q = zeros(n,p);
+    R = zeros(p,p);
+    for k = 1:p
+        Q(:,k) = X(:,k);
+        for i = 1:k-1
+            R(i,k) = Q(:,i)'*Q(:,k);
+            Q(:,k) = Q(:,k) - R(i,k)*Q(:,i);
+        end
+        R(k,k) = norm(Q(:,k))';
+        Q(:,k) = Q(:,k)/R(k,k);
+    end
+end
+
+%Parts of this code is directly referenced from MathWorks, the weblink is
+%listed below.
+%https://blogs.mathworks.com/cleve/2016/07/25/compare-gram-schmidt-and-householder-orthogonalization-algorithms/#1ad80787-3697-40ef-9e94-2fa47f17100c
+
+%I compared three algorithms:build-in qr/modified
+%Gram-Schmidt/Householder. They all have good approximations to the
+%original matrix, but the build-in qr and Housholder have better stability
+%in orthogonality than Modified Gram-Schmidt does.
+
+% the Three testing matrix are:
+% magic(7) -- well-conditioned
+% hilb(7)  -- Poorly-conditioned
+% magic(8) -- ill-conditioned
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Question 2
+p1 = @(x) (x-2).^9;
+p2 = @(x) x.^9 -18*x.^8+144*x.^7-672*x.^6+2016*x.^5-4032*x.^4+5376*x.^3-4608*x.^2+2304*x-512;
+
+x = linspace(1.920,2.080,160);
+plot(x,p1(x),'b'); hold on
+plot(x,p2(x),'r')
+
+legend('LHS','RHS')
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Question 3
+%% part1
+A = randn(10,9);
+a = cond (A);
+
+B = randn(100, 99);
+b = cond (B);
+
+C = randn(999, 900);
+c = cond(C);
+%the condition number increases as the the dimension of the matrix
+%increases; however, after the dimension passes a certain threshold, the
+%condition number starts to drop. The condition number will sharply
+%increase when the matrix is squared.
+
+%% part2
+M = randn(100,99);
+m = cond(M);
+Mnew = M;
+Mnew(:,100) = M(:,1);
+mnew = cond(Mnew);
+mdet = det(Mnew);
+
+%the condition number of the new matrix spikes while the determinant of the
+%new matrix decreases to 0. This is not surprising because there are at
+%least 2 columns (first and last) are linearly dependent to each other and
+%this causes the new matrix being singular.
+%% part3 
+x = 100000;
+Mnew(:,100) = M(:,1)+ x*rand(100,1);
+condition = cond(Mnew);
+
+%the condition number spikes when x approaches zero, and decreases as x
+%value increases; however, after x value passes a certain threshold, the
+%condition number starts to increase again, though not to previous level.
